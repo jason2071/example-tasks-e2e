@@ -1,0 +1,106 @@
+package service
+
+import (
+	"example-tasks/model"
+	"example-tasks/repository"
+	"example-tasks/utils"
+	"fmt"
+)
+
+type TaskService interface {
+	CreateTask(task model.TaskRequest) error
+	GetTasks(cursor int64, size, priority int, sortWith, sortBy string) (*model.PagedResponse, error)
+	GetTaskByID(id int64) (model.Task, error)
+	UpdateTask(id int64, task model.TaskRequest) error
+	DeleteTask(id int64) error
+}
+
+type TaskServiceImpl struct {
+	taskRepository repository.TaskRepository
+}
+
+func NewTaskService(taskRepository repository.TaskRepository) *TaskServiceImpl {
+	return &TaskServiceImpl{
+		taskRepository: taskRepository,
+	}
+}
+
+func (s *TaskServiceImpl) CreateTask(task model.TaskRequest) error {
+	created, err := s.taskRepository.CreateTask(task)
+	if err != nil {
+		return err
+	}
+
+	if !created {
+		return utils.ErrTaskAlreadyExists200
+	}
+
+	return nil
+}
+
+func (s *TaskServiceImpl) GetTasks(cursor int64, size, priority int, sortWith, sortBy string) (*model.PagedResponse, error) {
+
+	if size <= 0 {
+		size = 20
+	}
+
+	tasks, err := s.taskRepository.GetTasks(cursor, size, priority, sortWith, sortBy)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve tasks: %v", err)
+	}
+
+	nextCursor := int64(0)
+	if len(tasks) > 0 {
+		nextCursor = tasks[len(tasks)-1].ID
+	}
+
+	return &model.PagedResponse{
+		Data: tasks,
+		Pagination: model.Pagination{
+			NextCursor: nextCursor,
+			PageSize:   size,
+		},
+	}, nil
+}
+
+func (s *TaskServiceImpl) GetTaskByID(id int64) (model.Task, error) {
+
+	task, err := s.taskRepository.GetTaskByID(id)
+	if err != nil {
+		return model.Task{}, fmt.Errorf("failed to retrieve task: %v", err)
+	}
+
+	if task.ID == 0 {
+		return model.Task{}, nil
+	}
+
+	return task, nil
+}
+
+func (s *TaskServiceImpl) UpdateTask(id int64, task model.TaskRequest) error {
+	errorCode, err := s.taskRepository.UpdateTask(id, task)
+	if err != nil {
+		return err
+	}
+
+	appErr := utils.GetAppErrorByCode(errorCode)
+	if appErr != utils.Success {
+		return appErr
+	}
+	return nil
+}
+
+func (s *TaskServiceImpl) DeleteTask(id int64) error {
+	errorCode, err := s.taskRepository.DeleteTask(id)
+	if err != nil {
+		return fmt.Errorf("failed to delete task: %v", err)
+	}
+
+	appErr := utils.GetAppErrorByCode(errorCode)
+	if appErr != utils.Success {
+		return appErr
+	}
+
+	return nil
+
+}

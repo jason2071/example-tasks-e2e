@@ -1,0 +1,9 @@
+__debug*
+.vscode/
+documents/
+coverage*
+.env
+*.env
+env-presets/
+files/
+examples/
