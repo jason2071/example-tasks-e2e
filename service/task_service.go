@@ -92,9 +92,13 @@ func (s *TaskServiceImpl) GetTaskByID(id int64) (model.Task, error) {
 }
 
 func (s *TaskServiceImpl) UpdateTask(id int64, task model.TaskRequest) error {
+	if id < 1 {
+		return utils.ErrInvalidRequest
+	}
+
 	errorCode, err := s.taskRepository.UpdateTask(id, task)
 	if err != nil {
-		return err
+		return utils.ErrInternalServer
 	}
 
 	appErr := utils.GetAppErrorByCode(errorCode)

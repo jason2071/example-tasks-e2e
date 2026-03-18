@@ -184,27 +184,22 @@ func (r *TaskRepositoryImpl) UpdateTask(id int64, task model.TaskRequest) (strin
 	query := "update example.tasks set "
 	args := []interface{}{}
 	argIndex := 1
-
-	if task.Title != nil && *task.Title != "" {
-		query += fmt.Sprintf("title = $%d, ", argIndex)
-		args = append(args, *task.Title)
-		argIndex++
-	}
+	setClauses := []string{"updated_at = CURRENT_TIMESTAMP", "deleted_at = NULL"}
 
 	if task.Status != nil && *task.Status != "" {
-		query += fmt.Sprintf("status = $%d, ", argIndex)
+		setClauses = append(setClauses, fmt.Sprintf("status = $%d", argIndex))
 		args = append(args, *task.Status)
 		argIndex++
 	}
 
 	if task.Priority != nil {
-		query += fmt.Sprintf("priority = $%d, ", argIndex)
+		setClauses = append(setClauses, fmt.Sprintf("priority = $%d", argIndex))
 		args = append(args, *task.Priority)
 		argIndex++
 	}
 
-	query = query[:len(query)-2]
-	query += fmt.Sprintf(" WHERE id = $%d AND deleted_at IS NULL", argIndex)
+	query += strings.Join(setClauses, ", ")
+	query += fmt.Sprintf(" WHERE id = $%d", argIndex)
 	args = append(args, id)
 
 	result, err := r.db.Exec(query, args...)

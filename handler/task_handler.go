@@ -182,7 +182,15 @@ func (h *TaskHandlerImpl) UpdateTask(c *fiber.Ctx) error {
 
 	err = h.taskService.UpdateTask(id, taskRequest)
 	if err != nil {
-		return utils.HandleError(c, err)
+		if _, ok := err.(*utils.AppError); ok {
+			_ = utils.HandleError(c, err)
+			return nil
+		}
+
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to update task",
+			"path":  path,
+		})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
