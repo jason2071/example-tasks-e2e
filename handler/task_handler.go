@@ -81,9 +81,31 @@ func (h *TaskHandlerImpl) CreateTask(c *fiber.Ctx) error {
 }
 
 func (h *TaskHandlerImpl) GetTasks(c *fiber.Ctx) error {
-	cursor, _ := strconv.ParseInt(c.Query("cursor", "0"), 10, 64)
-	size, _ := strconv.Atoi(c.Query("size", "20"))
-	priority, _ := strconv.Atoi(c.Query("priority", "0"))
+	path := c.Path()
+
+	cursor, err := strconv.ParseInt(c.Query("cursor", "0"), 10, 64)
+	if err != nil || cursor < 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid cursor",
+			"path":  path,
+		})
+	}
+
+	size, err := strconv.Atoi(c.Query("size", "20"))
+	if err != nil || size < 1 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid size",
+			"path":  path,
+		})
+	}
+
+	priority, err := strconv.Atoi(c.Query("priority", "0"))
+	if err != nil || priority < 0 || priority > 5 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid priority",
+			"path":  path,
+		})
+	}
 
 	sortWith := c.Query("sort_with", "id")
 	sortBy := c.Query("sort_by", "asc")
@@ -93,13 +115,21 @@ func (h *TaskHandlerImpl) GetTasks(c *fiber.Ctx) error {
 	allowedSortOrders := map[string]bool{"asc": true, "desc": true}
 
 	if !allowedSortFields[sortWith] || !allowedSortOrders[sortBy] {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid sort parameters"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid sort parameters",
+			"path":  path,
+		})
 	}
 
 	tasks, err := h.taskService.GetTasks(cursor, size, priority, sortWith, sortBy)
 	if err != nil {
+		if handled := utils.HandleError(c, err); handled != nil {
+			return handled
+		}
+
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to retrieve tasks",
+			"path":  path,
 		})
 	}
 

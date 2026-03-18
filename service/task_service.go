@@ -44,6 +44,15 @@ func (s *TaskServiceImpl) CreateTask(task model.TaskRequest) error {
 }
 
 func (s *TaskServiceImpl) GetTasks(cursor int64, size, priority int, sortWith, sortBy string) (*model.PagedResponse, error) {
+	if cursor < 0 || priority < 0 || priority > 5 {
+		return nil, utils.ErrInvalidRequest
+	}
+
+	allowedSortFields := map[string]bool{"id": true, "priority": true, "title": true}
+	allowedSortOrders := map[string]bool{"asc": true, "desc": true}
+	if !allowedSortFields[sortWith] || !allowedSortOrders[sortBy] {
+		return nil, utils.ErrInvalidRequest
+	}
 
 	if size <= 0 {
 		size = 20
@@ -51,7 +60,7 @@ func (s *TaskServiceImpl) GetTasks(cursor int64, size, priority int, sortWith, s
 
 	tasks, err := s.taskRepository.GetTasks(cursor, size, priority, sortWith, sortBy)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve tasks: %v", err)
+		return nil, utils.ErrInternalServer
 	}
 
 	nextCursor := int64(0)

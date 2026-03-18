@@ -6,6 +6,7 @@ import (
 	"example-tasks/utils"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/lib/pq"
 )
@@ -71,25 +72,43 @@ func (r *TaskRepositoryImpl) GetTasks(cursor int64, size int, priority int, sort
         FROM example.tasks 
     `
 
+	sortColumns := map[string]string{"id": "id", "priority": "priority", "title": "title"}
+	sortColumn, ok := sortColumns[sortWith]
+	if !ok {
+		return nil, fmt.Errorf("invalid sort field")
+	}
+
+	sortOrder := strings.ToUpper(sortBy)
+	if sortOrder != "ASC" && sortOrder != "DESC" {
+		return nil, fmt.Errorf("invalid sort order")
+	}
+
 	args := []interface{}{}
 	argIndex := 1
+	conditions := make([]string, 0, 2)
+
+	if priority > 0 {
+		conditions = append(conditions, fmt.Sprintf("priority = $%d", argIndex))
+		args = append(args, priority)
+		argIndex++
+	}
 
 	if cursor > 0 {
 		operator := ">"
-		if sortBy == "desc" {
+		if sortOrder == "DESC" {
 			operator = "<"
 		}
 
-		if priority > 0 {
-			query += fmt.Sprintf(" AND id %s $%d ", operator, argIndex)
-		} else {
-			query += fmt.Sprintf(" WHERE id %s $%d ", operator, argIndex)
-		}
+		conditions = append(conditions, fmt.Sprintf("id %s $%d", operator, argIndex))
 		args = append(args, cursor)
 		argIndex++
 	}
 
-	query += fmt.Sprintf(" ORDER BY %s %s ", sortWith, sortBy)
+	if len(conditions) > 0 {
+		query += " WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	query += fmt.Sprintf(" ORDER BY %s %s, id %s ", sortColumn, sortOrder, sortOrder)
 	query += fmt.Sprintf(" LIMIT $%d; ", argIndex)
 	args = append(args, size)
 
