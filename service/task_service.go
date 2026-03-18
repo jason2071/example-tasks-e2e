@@ -26,13 +26,18 @@ func NewTaskService(taskRepository repository.TaskRepository) *TaskServiceImpl {
 }
 
 func (s *TaskServiceImpl) CreateTask(task model.TaskRequest) error {
-	created, err := s.taskRepository.CreateTask(task)
+	errorCode, err := s.taskRepository.CreateTask(task)
 	if err != nil {
 		return err
 	}
 
-	if !created {
+	appErr := utils.GetAppErrorByCode(errorCode)
+	if appErr == utils.ErrDuplicateEntry {
 		return utils.ErrTaskAlreadyExists200
+	}
+
+	if appErr != utils.Success {
+		return appErr
 	}
 
 	return nil

@@ -65,6 +65,10 @@ func (h *TaskHandlerImpl) CreateTask(c *fiber.Ctx) error {
 			})
 		}
 
+		if handled := utils.HandleError(c, err); handled != nil {
+			return handled
+		}
+
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to create task",
 			"path":  path,

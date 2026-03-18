@@ -11,7 +11,7 @@ import (
 )
 
 type TaskRepository interface {
-	CreateTask(task model.TaskRequest) (bool, error)
+	CreateTask(task model.TaskRequest) (string, error)
 	GetTasks(cursor int64, size, priority int, sortWith, sortBy string) ([]model.Task, error)
 	GetTaskByID(id int64) (model.Task, error)
 	UpdateTask(id int64, task model.TaskRequest) (string, error)
@@ -28,27 +28,41 @@ func NewTaskRepository(db *sql.DB) *TaskRepositoryImpl {
 	}
 }
 
-func (r *TaskRepositoryImpl) CreateTask(task model.TaskRequest) (bool, error) {
+func (r *TaskRepositoryImpl) CreateTask(task model.TaskRequest) (string, error) {
 	query := `
 		INSERT INTO example.tasks (title, status, priority) 
 		VALUES ($1, $2, $3) 
-		ON CONFLICT (title) DO NOTHING 
-		RETURNING true;
+		ON CONFLICT (title) DO NOTHING;
 	`
 
-	var inserted bool
-	err := r.db.QueryRow(query, *task.Title, *task.Status, *task.Priority).Scan(&inserted)
+	var priority interface{}
+	if task.Priority != nil {
+		priority = *task.Priority
+	}
+
+	result, err := r.db.Exec(query, *task.Title, *task.Status, priority)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			log.Println("Task with the same title already exists:", *task.Title)
-			return false, nil
+		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
+			log.Println("Duplicate key error:", pqErr.Message)
+			return utils.ErrDuplicateEntry.ErrorCode, nil
 		}
 		log.Println("Failed to create task:", err)
-		return false, err
+		return utils.ErrInternalServer.ErrorCode, err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Println("Failed to get rows affected:", err)
+		return utils.ErrInternalServer.ErrorCode, err
+	}
+
+	if rowsAffected == 0 {
+		log.Println("Task with the same title already exists:", *task.Title)
+		return utils.ErrDuplicateEntry.ErrorCode, nil
 	}
 
 	log.Println("Task created successfully:", *task.Title)
-	return inserted, nil
+	return utils.Success.ErrorCode, nil
 }
 
 func (r *TaskRepositoryImpl) GetTasks(cursor int64, size int, priority int, sortWith, sortBy string) ([]model.Task, error) {
