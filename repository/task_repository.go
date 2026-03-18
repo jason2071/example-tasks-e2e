@@ -31,9 +31,9 @@ func NewTaskRepository(db *sql.DB) *TaskRepositoryImpl {
 
 func (r *TaskRepositoryImpl) CreateTask(task model.TaskRequest) (string, error) {
 	query := `
-		INSERT INTO example.tasks (title, status, priority) 
-		VALUES ($1, $2, $3) 
-		ON CONFLICT (title) DO NOTHING;
+		INSERT INTO example.tasks (title, status, priority)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (title) WHERE deleted_at IS NULL DO NOTHING;
 	`
 
 	var priority interface{}
@@ -85,7 +85,7 @@ func (r *TaskRepositoryImpl) GetTasks(cursor int64, size int, priority int, sort
 
 	args := []interface{}{}
 	argIndex := 1
-	conditions := make([]string, 0, 2)
+	conditions := []string{"deleted_at IS NULL"}
 
 	if priority > 0 {
 		conditions = append(conditions, fmt.Sprintf("priority = $%d", argIndex))
@@ -140,13 +140,13 @@ func (r *TaskRepositoryImpl) GetTasks(cursor int64, size int, priority int, sort
 
 func (r *TaskRepositoryImpl) taskTotalRecords(priority int) (int64, error) {
 	var totalRows int64
-	countQuery := "SELECT COUNT(*) FROM example.tasks"
+	countQuery := "SELECT COUNT(*) FROM example.tasks WHERE deleted_at IS NULL"
 
 	args := []interface{}{}
 	argIndex := 1
 
 	if priority > 0 {
-		countQuery += fmt.Sprintf(" WHERE priority = $%d", argIndex)
+		countQuery += fmt.Sprintf(" AND priority = $%d", argIndex)
 		args = append(args, priority)
 		argIndex++
 	}
@@ -164,7 +164,7 @@ func (r *TaskRepositoryImpl) GetTaskByID(id int64) (model.Task, error) {
 	query := `
 		SELECT id, title, status, created_at, updated_at, priority
 		FROM example.tasks 
-		WHERE id = $1;`
+		WHERE id = $1 AND deleted_at IS NULL;`
 
 	var task model.Task
 	err := r.db.QueryRow(query, id).Scan(&task.ID, &task.Title, &task.Status, &task.CreatedAt, &task.UpdatedAt, &task.Priority)
@@ -204,7 +204,7 @@ func (r *TaskRepositoryImpl) UpdateTask(id int64, task model.TaskRequest) (strin
 	}
 
 	query = query[:len(query)-2]
-	query += fmt.Sprintf(" WHERE id = $%d", argIndex)
+	query += fmt.Sprintf(" WHERE id = $%d AND deleted_at IS NULL", argIndex)
 	args = append(args, id)
 
 	result, err := r.db.Exec(query, args...)
@@ -235,8 +235,11 @@ func (r *TaskRepositoryImpl) UpdateTask(id int64, task model.TaskRequest) (strin
 
 func (r *TaskRepositoryImpl) DeleteTask(id int64) (string, error) {
 	query := `
-		DELETE FROM example.tasks 
-		WHERE id = $1;
+		UPDATE example.tasks
+		SET deleted_at = CURRENT_TIMESTAMP,
+			updated_at = CURRENT_TIMESTAMP
+		WHERE id = $1
+		  AND deleted_at IS NULL;
 	`
 
 	result, err := r.db.Exec(query, id)

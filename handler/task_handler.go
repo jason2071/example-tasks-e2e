@@ -191,11 +191,26 @@ func (h *TaskHandlerImpl) UpdateTask(c *fiber.Ctx) error {
 }
 
 func (h *TaskHandlerImpl) DeleteTask(c *fiber.Ctx) error {
-	id, _ := strconv.ParseInt(c.Params("id"), 10, 64)
+	path := c.Path()
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil || id < 1 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid task ID",
+			"path":  path,
+		})
+	}
 
-	err := h.taskService.DeleteTask(id)
+	err = h.taskService.DeleteTask(id)
 	if err != nil {
-		return utils.HandleError(c, err)
+		if _, ok := err.(*utils.AppError); ok {
+			_ = utils.HandleError(c, err)
+			return nil
+		}
+
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to delete task",
+			"path":  path,
+		})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{

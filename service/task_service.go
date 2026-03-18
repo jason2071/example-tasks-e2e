@@ -105,9 +105,13 @@ func (s *TaskServiceImpl) UpdateTask(id int64, task model.TaskRequest) error {
 }
 
 func (s *TaskServiceImpl) DeleteTask(id int64) error {
+	if id < 1 {
+		return utils.ErrInvalidRequest
+	}
+
 	errorCode, err := s.taskRepository.DeleteTask(id)
 	if err != nil {
-		return fmt.Errorf("failed to delete task: %v", err)
+		return utils.ErrInternalServer
 	}
 
 	appErr := utils.GetAppErrorByCode(errorCode)

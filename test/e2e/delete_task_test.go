@@ -32,11 +32,11 @@ func TestDeleteTaskE2E_Success(t *testing.T) {
 	}
 
 	var count int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM example.tasks WHERE id = 1`).Scan(&count); err != nil {
-		t.Fatalf("failed to verify delete in DB: %v", err)
+	if err := db.QueryRow(`SELECT COUNT(*) FROM example.tasks WHERE id = 1 AND deleted_at IS NOT NULL`).Scan(&count); err != nil {
+		t.Fatalf("failed to verify soft delete in DB: %v", err)
 	}
-	if count != 0 {
-		t.Fatalf("expected row to be deleted, remaining rows: %d", count)
+	if count != 1 {
+		t.Fatalf("expected row to be soft deleted, got count: %d", count)
 	}
 }
 

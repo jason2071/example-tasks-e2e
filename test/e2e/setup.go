@@ -46,7 +46,7 @@ func openTestDB(t *testing.T) *sql.DB {
 
 	host := getEnv("E2E_DB_HOST", getEnv("DATABASE__HOST", "localhost"))
 	portStr := getEnv("E2E_DB_PORT", getEnv("DATABASE__PORT", "5432"))
-	user := getEnv("E2E_DB_USER", getEnv("DATABASE__USER", "phumai.ru"))
+	user := getEnv("E2E_DB_USER", getEnv("DATABASE__USER", "postgres"))
 	password := getEnv("E2E_DB_PASSWORD", getEnv("DATABASE__PASSWORD", ""))
 	database := getEnv("E2E_DB_NAME", getEnv("DATABASE__DBNAME", "plms"))
 	sslmode := getEnv("E2E_DB_SSLMODE", getEnv("DATABASE__SSLMODE", "disable"))
@@ -92,13 +92,17 @@ CREATE TABLE IF NOT EXISTS example.tasks (
 	status varchar(20) DEFAULT 'pending',
 	created_at timestamptz DEFAULT CURRENT_TIMESTAMP,
 	updated_at timestamptz DEFAULT CURRENT_TIMESTAMP,
+	deleted_at timestamptz NULL,
 	priority int NULL,
 	CONSTRAINT check_campaign_status CHECK (status IN ('pending', 'doing', 'done')),
 	CONSTRAINT check_priority_range CHECK (
 		priority IS NULL OR (priority >= 1 AND priority <= 5)
 	)
 );
-CREATE UNIQUE INDEX IF NOT EXISTS uq_example_tasks_ref ON example.tasks (title);
+ALTER TABLE example.tasks ADD COLUMN IF NOT EXISTS deleted_at timestamptz NULL;
+DROP INDEX IF EXISTS uq_example_tasks_ref;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_example_tasks_title_active ON example.tasks (title)
+WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_example_tasks_priority ON example.tasks (priority);
 `
 	if _, err := db.Exec(bootstrapSQL); err != nil {
