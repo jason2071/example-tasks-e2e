@@ -7,3 +7,6 @@ coverage*
 env-presets/
 files/
 examples/
+.claude/
+.agents/
+skills-lock.json
