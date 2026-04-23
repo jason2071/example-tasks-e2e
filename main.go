@@ -50,15 +50,21 @@ func main() {
 
 	// service
 	taskService := service.NewTaskService(taskRepo)
+	healthSvc := service.NewHealthService(db)
 
 	// handler
 	taskHandler := handler.NewTaskHandler(taskService)
+	healthHandler := handler.NewHealthHandler(healthSvc, appConfig.AppInfo)
 
 	// server
 	app := fiber.New()
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Hello, World!")
 	})
+
+	app.Get("/live", healthHandler.Live)
+	app.Get("/ready", healthHandler.Ready)
+	app.Get("/info", healthHandler.Info)
 
 	app.Post("/task", taskHandler.CreateTask)
 	app.Get("/tasks", taskHandler.GetTasks)

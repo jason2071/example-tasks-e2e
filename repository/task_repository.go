@@ -186,6 +186,12 @@ func (r *TaskRepositoryImpl) UpdateTask(id int64, task model.TaskRequest) (strin
 	argIndex := 1
 	setClauses := []string{"updated_at = CURRENT_TIMESTAMP", "deleted_at = NULL"}
 
+	if task.Title != nil && *task.Title != "" {
+		setClauses = append(setClauses, fmt.Sprintf("title = $%d", argIndex))
+		args = append(args, *task.Title)
+		argIndex++
+	}
+
 	if task.Status != nil && *task.Status != "" {
 		setClauses = append(setClauses, fmt.Sprintf("status = $%d", argIndex))
 		args = append(args, *task.Status)

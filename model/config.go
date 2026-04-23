@@ -6,7 +6,10 @@ type AppConfig struct {
 }
 
 type AppInfo struct {
-	Name string `mapstructure:"name"`
+	Name        string `mapstructure:"name"`
+	Version     string `mapstructure:"version"`
+	Description string `mapstructure:"description"`
+	Environment string `mapstructure:"environment"`
 }
 
 type DatabaseConfig struct {

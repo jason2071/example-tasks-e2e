@@ -1,5 +1,8 @@
 app:
   name: example-tasks
+  version: 1.0.0
+  description: Go + Fiber v2 + PostgreSQL REST API for task CRUD with cursor pagination, soft deletes, and priority (1-5)
+  environment: development
 
 database: 
   host: ""

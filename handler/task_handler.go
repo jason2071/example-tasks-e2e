@@ -61,6 +61,7 @@ func (h *TaskHandlerImpl) CreateTask(c *fiber.Ctx) error {
 		if errors.Is(err, utils.ErrTaskAlreadyExists200) {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
 				"error": utils.ErrTaskAlreadyExists200.Error(),
+				"code":  "E003",
 				"path":  path,
 			})
 		}
@@ -151,6 +152,7 @@ func (h *TaskHandlerImpl) GetTaskByID(c *fiber.Ctx) error {
 	if task.ID == 0 {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"error": utils.ErrTaskNotFound200.Error(),
+			"code":  "E001",
 		})
 	}
 
